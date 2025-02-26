@@ -100,7 +100,7 @@ while running:
         tie[2] += 0.05
         tie[0] = deathstar_pos[0] + math.cos(tie[2]) * (deathstar_radius + 50)
         tie[1] = deathstar_pos[1] + math.sin(tie[2]) * (deathstar_radius + 50)
-        if random.randint(0, 100) < 5:
+        if random.randint(0, 100) < 2:
             tie_lasers.append([tie[0] + tie_width // 2, tie[1] + tie_height])
 
     # Timer logic
@@ -182,9 +182,11 @@ while running:
             xwing_pos[1] < t_laser[1] < xwing_pos[1] + xwing_height):
             screen.fill(BLACK)
             lose_text = font.render("You Lost!", True, WHITE)
-            screen.blit(lose_text, (WIDTH // 2 - 70, HEIGHT // 2))
+            score_text = font.render(f"Final Score: {score}", True, WHITE)
+            screen.blit(lose_text, (WIDTH // 2 - 70, HEIGHT // 2 - 20))  # Center "You Lost!"
+            screen.blit(score_text, (WIDTH // 2 - 100, HEIGHT // 2 + 20))  # Score below it
             pygame.display.flip()
-            pygame.time.wait(2000)
+            pygame.time.wait(5000)  # Wait 5 seconds
             running = False
         elif t_laser[1] > HEIGHT:
             tie_lasers.remove(t_laser)
