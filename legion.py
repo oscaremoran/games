@@ -198,10 +198,62 @@ def diplomacy_meeting(player, ai, territories):
             if (ai if is_player_meeting else player).conquered >= 3 and (ai if is_player_meeting else player).war_cry_cooldown == -1:
                 (ai if is_player_meeting else player).war_cry_cooldown = 0
 
+# European invasion function
+def european_invasion(player, ai, europeans, territories):
+    if random.random() < 0.1:  # 1/10 chance of invasion
+        outcome = random.choice([1, 2, 3])
+        if outcome == 1:
+            print("European Invasion! The Europeans have conquered Greece. The Europeans have triumphed")
+            return False  # End the game
+        elif outcome == 2:
+            spartan_territories = [t for t in territories.values() if t.owner == player]
+            if spartan_territories:
+                target = random.choice(spartan_territories)
+                print(f"European Invasion! Europeans conquer {target.name}!")
+                target.owner = europeans
+                target.is_neutral = False
+                target.units = {
+                    "swordsman": random.randint(1, 5),
+                    "spearman": random.randint(1, 5),
+                    "archer": random.randint(1, 5)
+                }
+        else:  # outcome == 3
+            athenian_territories = [t for t in territories.values() if t.owner == ai]
+            if athenian_territories:
+                target = random.choice(athenian_territories)
+                print(f"European Invasion! Europeans conquer {target.name}!")
+                target.owner = europeans
+                target.is_neutral = False
+                target.units = {
+                    "swordsman": random.randint(1, 5),
+                    "spearman": random.randint(1, 5),
+                    "archer": random.randint(1, 5)
+                }
+    return True  # Continue the game
+
+def european_turn(europeans, player, ai, territories):
+    if any(t.owner == europeans for t in territories.values()):  # Only if Europeans control a territory
+        print("Europeans' turn")
+        possible_attacks = [(t, adj) for t in territories.values() if t.owner == europeans and sum(t.units.values()) > 1 
+                            for adj in t.adjacent if adj.owner in [player, ai]]
+        if possible_attacks:
+            attack_from, target = random.choice(possible_attacks)
+            k = random.randint(1, min(3, sum(attack_from.units.values()) - 1))  # Limit to 3 units
+            print(f"Europeans attack from {attack_from.name} to {target.name} with {k} units")
+            if battle(attack_from, target, k, False, territories, ai):
+                if target.owner == europeans:
+                    print(f"{attack_from.name} (Europeans) Wins! {format_units(target.units)} remaining on {target.name}.")
+                else:
+                    print(f"Attack from {attack_from.name} failed. {format_units(target.units)} on {target.name}.")
+                display_state()
+        else:
+            print("Europeans have no valid attacks this turn.")
+
 # Game setup
 player = Player("player")
 ai = Player("AI")
 neutral = Player("neutral")
+europeans = Player("europeans")
 territories = {name: Territory(name, is_neutral=(name in ["Pylos", "Larissa"])) 
                for name in ["Sparta", "Athens", "Thebes", "Corinth", "Olympia", "Delphi", "Pylos", "Larissa"]}
 adjacencies = {
@@ -296,17 +348,18 @@ async def player_turn():
         if player.war_cry_cooldown > 0:
             player.war_cry_cooldown -= 1
         if all(territory.owner in [player, neutral] for territory in territories.values()):
-            print("Player wins!")
+            print("Sparta Triumphes!")
             game_running = False
             break
 
 async def ai_turn():
     global game_running
     print("AI's turn")
-    possible_attacks = [(t, adj) for t in territories.values() if t.owner == ai and sum(t.units.values()) > 1 for adj in t.adjacent if adj.owner == player]
+    possible_attacks = [(t, adj) for t in territories.values() if t.owner == ai and sum(t.units.values()) > 1 
+                        for adj in t.adjacent if adj.owner == player]
     if possible_attacks:
         attack_from, target = random.choice(possible_attacks)
-        k = random.randint(1, min(3, sum(attack_from.units.values()) - 1))  # Limit to 3 units for balance
+        k = random.randint(1, min(3, sum(attack_from.units.values()) - 1))  # Limit to 3 units
         print(f"AI attacks from {attack_from.name} to {target.name} with {k} units")
         if battle(attack_from, target, k, False, territories, ai):
             if target.owner == ai:
@@ -317,7 +370,7 @@ async def ai_turn():
     else:
         print("AI has no valid attacks this turn.")
     if all(territory.owner in [ai, neutral] for territory in territories.values()):
-        print("AI wins!")
+        print("Athens has triumphed...")
         game_running = False
 
 async def main():
@@ -330,6 +383,12 @@ async def main():
         if not game_running:
             break
         diplomacy_meeting(player, ai, territories)
+        if not game_running:
+            break
+        european_turn(europeans, player, ai, territories)
+        if not european_invasion(player, ai, europeans, territories):
+            game_running = False
+            break
         await asyncio.sleep(1.0 / FPS)
 
 if platform.system() == "Emscripten":
