@@ -136,10 +136,10 @@ healing_orb_interval = 600  # Every 10 seconds (60 FPS * 10)
 rock_pos = None
 rock_vel = 5
 rock_timer = 0
-rock_interval = 300  # Every 5 seconds
+rock_interval = 60  # Every 5 seconds
 magnetic_active = False
 magnetic_timer = 0
-magnetic_interval = 900  # Every 15 seconds
+magnetic_interval = 300  # Every 15 seconds
 magnetic_duration = 180  # 3 seconds
 
 # Function to draw character PNGs with borders in select
@@ -447,7 +447,7 @@ while running:
                     countdown_time = 3
                     player_pos = [100, 400]
                     enemy_pos = [600, 400]
-                    player_health = 500
+                    player_health = 300
                     enemy_health = 500
                     player_special_meter = 0
                     enemy_special_meter = 0
