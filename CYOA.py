@@ -208,10 +208,10 @@ def setup_world():
 
     # Lokendar Quadrants
     rooms["lokendar_se"] = Room(
-        "Dock",
+        "Lokendar - Southeast Quadrant",
         "An area with suspicious officials.",
         npcs=[NPC("Townsperson A", "Welcome to Lokendar, traveler. The city has seen better days.")],
-        exits={"north": "lokendar_ne", "west": "lokendar_sw", "junkyard": "junkyard"},
+        exits={"north": "lokendar_ne", "west": "lokendar_sw", "junkyard": "junkyard", "dock": "lokendar_dock"},
         locked_exits={"gate": "black_keep_gate"}  # Locked until Corruption Monster is defeated
     )
     rooms["lokendar_sw"] = Room(
@@ -309,6 +309,39 @@ def setup_world():
             1, 0  # Not meant to be fought directly
         )],
         exits={"south": "black_keep_armory"}
+    )
+
+    # Spring of Courage
+    rooms["spring_of_courage"] = Room(
+        "Spring of Courage",
+        "A sacred spring surrounded by ancient statues. Waves of enemies emerge to test your resolve!",
+        enemies=[
+            Enemy("Guardian Warrior", "", "", 40, 15),
+            Enemy("Guardian Archer", "", "", 30, 10),
+            Enemy("Guardian Mage", "", "", 50, 20),
+            Enemy("Guardian Beast", "", "", 60, 25)
+        ],
+        exits={}  # No exits, focus on combat challenge
+    )
+
+    # Whirlpool
+    rooms["whirlpool"] = Room(
+        "Whirlpool",
+        "A swirling vortex of water. The Kraken rises from the depths, attacking your boat!",
+        enemies=[Enemy(
+            "Kraken",
+            "Kraken, Terror of the Seas",
+            "A massive octopus-like beast with tentacles whipping through the waves, its beak snapping hungrily.",
+            200, 35
+        )],
+        exits={}  # No exits, boat combat
+    )
+
+    # Lokendar Dock
+    rooms["lokendar_dock"] = Room(
+        "Lokendar Dock",
+        "A sturdy dock in Lokendar's harbor. From here, you can sail back to other islands if you have a boat.",
+        exits={"north": "lokendar_se"}
     )
 
     return rooms, "castle_start"
@@ -451,7 +484,7 @@ def memorize_puzzle(player):
         return "Invalid input."
 
 def attack_enemy(player, enemy_name, rooms):
-    bosses = ["Dragon", "Hydra", "Corruption Monster", "Crystal Mech"]
+    bosses = ["Dragon", "Hydra", "Corruption Monster", "Crystal Mech", "Kraken"]
     for enemy in player.current_room.enemies:
         if enemy.name.lower() == enemy_name:
             if enemy.name == "Razukan":
@@ -471,7 +504,7 @@ def attack_enemy(player, enemy_name, rooms):
             frozen = False
             while enemy.health > 0 and player.health > 0:
                 print(f"Combat with {enemy.name}! Enemy health: {enemy.health}, Your health: {player.health}, Mana: {player.mana}")
-                print("What do you do? (attack, cast [spell], use [item], flee)")
+                print("What do you do? (attack, cast [spell], use [item], flee)" + (" or shoot cannon" if enemy.name == "Kraken" else ""))
                 cmd = input("> ").lower()
                 parts = cmd.split()
                 action = parts[0]
@@ -485,6 +518,12 @@ def attack_enemy(player, enemy_name, rooms):
                     if enemy.health <= 0:
                         break
                     print(f"You hit {enemy.name}! Now health: {enemy.health}")
+                elif action == "shoot" and target == "cannon" and enemy.name == "Kraken":
+                    damage = 40  # Cannon damage
+                    enemy.health -= damage
+                    if enemy.health <= 0:
+                        break
+                    print(f"You fire the cannon at {enemy.name}! Now health: {enemy.health}")
                 elif action == "cast" and target:
                     if target in player.spells and player.mana >= 20:
                         player.mana -= 20
@@ -517,6 +556,7 @@ def attack_enemy(player, enemy_name, rooms):
                         print("The enemy is frozen and skips its turn!")
                         frozen = False
                         continue
+                    # Perform first attack
                     attack_types = ["light", "heavy"]
                     if enemy.name in bosses:
                         attack_types.append("special")
@@ -552,6 +592,11 @@ def attack_enemy(player, enemy_name, rooms):
                             correct = ["duck"]
                             time_limit = 3
                             dmg = 40 + enemy.damage // 10
+                        elif enemy.name == "Kraken":
+                            prompt = "Kraken whips a tentacle! Type 'swerve' within 3 seconds!"
+                            correct = ["swerve"]
+                            time_limit = 3
+                            dmg = 35 + enemy.damage // 10
 
                     print(prompt)
                     start_time = time.time()
@@ -568,11 +613,11 @@ def attack_enemy(player, enemy_name, rooms):
                         print(f"You took {dmg} damage! Your health: {player.health}")
                         if player.health <= 0:
                             return "You died! Game over."
-                    if enemy.name == "Crystal Mech" and enemy.health <= 110:
-                        print("Crystal Mech attacks again!")
-                        # Repeat attack logic for back-to-back attacks
+
+                    # Crystal Mech phase 2: back-to-back attack if health <= 110
+                    if enemy.name == "Crystal Mech" and enemy.health <= 110 and enemy.health > 0:
+                        print("Crystal Mech enters phase 2! It attacks again!")
                         attack = random.choice(attack_types)
-                        # Crystal Mech phase 2: back-to-back attack if health <= 110
                         if attack == "light":
                             prompt = f"Enemy light attack! Type 'jump' within 2 seconds!"
                             correct = ["jump"]
@@ -588,7 +633,22 @@ def attack_enemy(player, enemy_name, rooms):
                             correct = ["duck"]
                             time_limit = 3
                             dmg = 40 + enemy.damage // 10
-                            # ... (repeat the attack code here for phase 2)
+
+                        print(prompt)
+                        start_time = time.time()
+                        inp = ""
+                        while time.time() - start_time < time_limit:
+                            rlist, _, _ = select.select([sys.stdin], [], [], 0.1)
+                            if rlist:
+                                inp = sys.stdin.readline().strip().lower()
+                                break
+                        if inp in correct:
+                            print("You dodged!")
+                        else:
+                            player.health -= dmg
+                            print(f"You took {dmg} damage! Your health: {player.health}")
+                            if player.health <= 0:
+                                return "You died! Game over."
 
             if player.health > 0:
                 player.current_room.enemies.remove(enemy)
@@ -640,10 +700,11 @@ def use_item(player, item_name, rooms, in_combat=False):
             elif item_name == "strange symbol":
                 return "It doesn't seem to do anything."
             elif item_name == "boat":
-                if player.current_room.name != "Dock":
+                if player.current_room.name != "Dock" and player.current_room.name != "Lokendar Dock":
                     return "You can only use the boat at a dock."
                 destinations = {
-                    "lokendar_se": "Lokendar",
+                    "dock": "Isolated Island",
+                    "lokendar_dock": "Lokendar",
                     "spring_of_courage": "Spring of Courage",
                     "whirlpool": "Whirlpool"
                 }
@@ -662,9 +723,6 @@ def use_item(player, item_name, rooms, in_combat=False):
                         else:
                             return "That destination is locked."
                 return "Invalid destination."
-            elif item_name == "grenade":
-                # Assume in combat, deal damage to enemy
-                return "Grenade thrown! (Placeholder effect)"
             elif item_name in ["keep key 1", "keep key 2", "keep key 3"]:
                 if player.current_room.name == "Black Keep Armory" and "north" in player.current_room.locked_exits:
                     required_keys = ["keep key 1", "keep key 2", "keep key 3"]
